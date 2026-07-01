@@ -1,13 +1,13 @@
 """
 tools.py — Tool use / Function calling (Day 2)
 
-================ KHÁI NIỆM 3 — TOOL USE / FUNCTION CALLING =================
-File này định nghĩa các HÀM PYTHON THẬT thao tác dữ liệu việc-cần-làm
-(đọc/ghi data/tasks.json), đồng thời KHAI BÁO chúng cho Gemini bằng
+================ CONCEPT 3 — TOOL USE / FUNCTION CALLING =================
+This file defines the REAL PYTHON FUNCTIONS that manipulate the to-do data
+(read/write data/tasks.json), and also DECLARES them to Gemini via
 function calling (TOOL_DECLARATIONS).
 
-Model sẽ tự quyết định gọi tool nào dựa trên câu của người dùng; còn code ở
-đây mới là nơi THỰC THI tool thật và trả kết quả về cho model.
+The model decides which tool to call based on the user's sentence; the code
+here is where the real tool is EXECUTED and the result returned to the model.
 ============================================================================
 """
 
@@ -15,14 +15,14 @@ import json
 import os
 from datetime import date
 
-# Đường dẫn storage cục bộ. BẢO MẬT: dữ liệu chỉ nằm trên máy, không gửi ra ngoài.
+# Local storage path. SECURITY: data stays on the machine and is not sent anywhere.
 _DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 _TASKS_FILE = os.path.join(_DATA_DIR, "tasks.json")
 
 
-# --------------------------- Helpers lưu trữ JSON ---------------------------
+# --------------------------- JSON storage helpers ---------------------------
 def _load() -> list[dict]:
-    """Đọc danh sách task từ tasks.json (tạo file rỗng nếu chưa có)."""
+    """Read the task list from tasks.json (return empty if the file doesn't exist yet)."""
     if not os.path.exists(_TASKS_FILE):
         return []
     try:
@@ -30,25 +30,25 @@ def _load() -> list[dict]:
             data = json.load(f)
         return data if isinstance(data, list) else []
     except (json.JSONDecodeError, OSError):
-        # File hỏng -> coi như rỗng, tránh crash.
+        # Corrupt file -> treat as empty, avoid crashing.
         return []
 
 
 def _save(tasks: list[dict]) -> None:
-    """Ghi danh sách task xuống tasks.json (tạo thư mục data/ nếu thiếu)."""
+    """Write the task list to tasks.json (create the data/ directory if missing)."""
     os.makedirs(_DATA_DIR, exist_ok=True)
     with open(_TASKS_FILE, "w", encoding="utf-8") as f:
         json.dump(tasks, f, ensure_ascii=False, indent=2)
 
 
 def _next_id(tasks: list[dict]) -> int:
-    """Sinh id mới = id lớn nhất hiện có + 1."""
+    """Generate a new id = current max id + 1."""
     return (max((t["id"] for t in tasks), default=0)) + 1
 
 
-# ------------------------------ Các tool thật ------------------------------
+# ------------------------------ The real tools ------------------------------
 def add_task(title: str, due: str = "") -> dict:
-    """Thêm một việc cần làm. due là hạn (chuỗi tự do, có thể rỗng)."""
+    """Add a to-do item. `due` is the deadline (free-form string, may be empty)."""
     title = (title or "").strip()
     if not title:
         return {"ok": False, "message": "Tiêu đề việc không được để trống."}
@@ -60,13 +60,13 @@ def add_task(title: str, due: str = "") -> dict:
 
 
 def list_tasks() -> dict:
-    """Liệt kê tất cả việc cần làm."""
+    """List all to-do items."""
     tasks = _load()
     return {"ok": True, "count": len(tasks), "tasks": tasks}
 
 
 def complete_task(task_id: int) -> dict:
-    """Đánh dấu một việc là đã hoàn thành theo id."""
+    """Mark a task as done by id."""
     try:
         task_id = int(task_id)
     except (TypeError, ValueError):
@@ -81,7 +81,7 @@ def complete_task(task_id: int) -> dict:
 
 
 def delete_task(task_id: int) -> dict:
-    """Xóa một việc theo id."""
+    """Delete a task by id."""
     try:
         task_id = int(task_id)
     except (TypeError, ValueError):
@@ -97,8 +97,8 @@ def delete_task(task_id: int) -> dict:
 
 def plan_day() -> dict:
     """
-    Đọc các việc CHƯA hoàn thành và trả về để model gợi ý thứ tự làm trong ngày.
-    (Việc sắp xếp/giải thích sẽ do model làm khi đã nạp skill planning-day.)
+    Read the UNfinished tasks and return them so the model can suggest an order for the day.
+    (The ordering/explanation is done by the model once the planning-day skill is loaded.)
     """
     tasks = _load()
     pending = [t for t in tasks if not t.get("done")]
@@ -110,7 +110,7 @@ def plan_day() -> dict:
     }
 
 
-# Bảng tra cứu: tên tool -> hàm Python thật để THỰC THI ở bước ACT.
+# Lookup table: tool name -> the real Python function to EXECUTE in the ACT step.
 TOOL_FUNCTIONS = {
     "add_task": add_task,
     "list_tasks": list_tasks,
@@ -122,11 +122,14 @@ TOOL_FUNCTIONS = {
 
 def build_tool_declarations(types):
     """
-    KHÁI NIỆM 3 — Khai báo function declarations cho Gemini.
+    CONCEPT 3 — Build the function declarations for Gemini.
 
-    Nhận module `google.genai.types` từ agent để dựng schema cho từng tool.
-    Đây chính là phần "mô tả tool" mà model đọc để biết có thể gọi hàm nào,
-    cần tham số gì.
+    Takes the `google.genai.types` module from the agent to build a schema for each tool.
+    This is the "tool description" the model reads to know which functions it can call
+    and what parameters they need.
+
+    NOTE: the description strings below are kept in Vietnamese on purpose — they are part
+    of the prompt the model reads to route tool calls, so translating them could change routing.
     """
     return types.Tool(
         function_declarations=[

@@ -1,14 +1,20 @@
 # Personal Concierge Agent
 
-Trợ lý cá nhân ("Personal Concierge") chạy trong **terminal**, giúp bạn **quản lý việc cần làm**:
-thêm việc, xem danh sách, đánh dấu hoàn thành, xóa việc và lập kế hoạch trong ngày.
-Dữ liệu lưu **cục bộ** trong `data/tasks.json` — không gửi đi đâu (chỉ gọi Gemini để hiểu yêu cầu).
-Agent còn là **MCP client**, tiêu thụ server chính thức **mcp-server-time** để biết ngày/giờ thật.
+A personal assistant ("Personal Concierge") that runs in the **terminal** and helps you
+**manage your to-dos**: add tasks, list them, mark them done, delete them, and plan your day.
+Data is stored **locally** in `data/tasks.json` — nothing is sent anywhere (Gemini is only
+called to understand your request).
+The agent is also an **MCP client**, consuming the official **mcp-server-time** server to know
+the real date/time.
 
-## Sơ đồ
+> Note: the agent chats in **Vietnamese** (that is its intended UX and what skill routing relies
+> on). The example commands below are shown in Vietnamese because they are the literal inputs you
+> type to the agent.
+
+## Diagram
 
 ```
-                      security: policy_check() + mask_pii() bọc ngoài MỌI lời gọi
+                      security: policy_check() + mask_pii() wrap EVERY call
         ┌─────────────────────────────────────────────────────────────────┐
         │                                                                   │
 User ⇄ agent.py  ── task tools (add/list/complete/delete/plan) ─► data/tasks.json
@@ -16,67 +22,67 @@ User ⇄ agent.py  ── task tools (add/list/complete/delete/plan) ─► data
         │                                                                   │
         └── MCP client ⇄ [stdio] ⇄ mcp-server-time (official) : get_current_time / convert_time
 ```
-Gemini nhìn thấy **7 tool** (5 tool việc + 2 tool thời gian gộp chung). `policy_check()` gác
-trước mọi tool (kể cả tool MCP), `mask_pii()` che PII trước khi in.
+Gemini sees **7 tools** (5 task tools + 2 time tools merged together). `policy_check()` gates
+every tool (including MCP tools), and `mask_pii()` masks PII before printing.
 
-## Chạy thế nào
+## How to run
 
-Yêu cầu: Python (đã test trên Windows + Python 3.14). MCP time server chạy sẵn qua
-`python -m mcp_server_time` — không cần API key.
+Requirements: Python (tested on Windows + Python 3.14). The MCP time server runs out of the box
+via `python -m mcp_server_time` — no API key needed.
 
 ```bash
-# 1) Tạo & kích hoạt môi trường ảo
+# 1) Create & activate a virtual environment
 python -m venv .venv
 .venv\Scripts\activate         # Windows (PowerShell/CMD)
 
-# 2) Cài thư viện
+# 2) Install dependencies
 pip install -r requirements.txt
 
-# 3) Tạo file .env và điền API key (KHÔNG hardcode trong code)
+# 3) Create the .env file and fill in the API key (do NOT hardcode it in the code)
 copy .env.example .env         # Windows
-#   rồi mở .env, sửa: GEMINI_API_KEY=khoa_api_that_cua_ban
+#   then open .env and set: GEMINI_API_KEY=your_real_api_key
 
-# 4) Chạy
+# 4) Run
 python main.py
 ```
 
-Trong vòng chat, gõ `thoát` hoặc `exit` để dừng.
+In the chat loop, type `thoát` or `exit` to quit.
 
-### Thử nhanh
-- `thêm việc nộp capstone hạn 6/7` → tạo task, lưu vào `data/tasks.json` (nạp skill `adding-tasks`)
-- `xem việc của tôi` → liệt kê task
-- `lập kế hoạch hôm nay cho tôi` → nạp skill `planning-day` và gợi ý thứ tự
-- `hôm nay là ngày mấy?` → gọi `get_current_time` **qua MCP** → ngày thật
-- `còn mấy ngày tới hạn nộp capstone?` → dùng ngày thật (MCP) để tính
-- `đánh dấu việc 1 xong` → cập nhật trạng thái
-- Nhập email/số điện thoại → khi in lại sẽ bị che (ví dụ `a***@gmail.com`, `09******89`)
+### Quick try (type these Vietnamese inputs to the agent)
+- `thêm việc nộp capstone hạn 6/7` → creates a task, saved to `data/tasks.json` (loads the `adding-tasks` skill)
+- `xem việc của tôi` → lists tasks
+- `lập kế hoạch hôm nay cho tôi` → loads the `planning-day` skill and suggests an order
+- `hôm nay là ngày mấy?` → calls `get_current_time` **via MCP** → the real date
+- `còn mấy ngày tới hạn nộp capstone?` → uses the real date (MCP) to compute
+- `đánh dấu việc 1 xong` → updates the status
+- Enter an email/phone number → it gets masked when printed back (e.g. `a***@gmail.com`, `09******89`)
 
-## Khái niệm khóa học đã thể hiện
+## Course concepts demonstrated
 
-| Khái niệm | Thể hiện ở đâu |
+| Concept | Where it shows up |
 |---|---|
-| **1. Agent system** (Perceive → Plan → Act → Observe) | `agent.py` → `ConciergeAgent.run_turn()`: có comment đánh dấu rõ 4 bước; `main.py` nhận input (Perceive). |
-| **2. Agent Skills** ✓ (chuẩn SKILL.md) | `agent.py` → `discover_skills()` (metadata luôn sẵn) + `select_skill()` (nạp theo `description`, progressive disclosure) + `load_skill()` (nạp thân khi trúng); skill ở `skills/adding-tasks/SKILL.md`, `skills/planning-day/SKILL.md`. |
-| **3. Tool use / Function calling** | `tools.py`: 5 hàm thật (`add_task`, `list_tasks`, `complete_task`, `delete_task`, `plan_day`) + `build_tool_declarations()` khai báo cho Gemini. |
-| **4. MCP** ✓ (consume server có sẵn) | `agent.py` → `start_mcp()` mở phiên stdio tới **mcp-server-time** và gộp `get_current_time`/`convert_time` vào tool cho Gemini; `_call_mcp_tool()` gọi qua MCP. Không tự xây server. |
-| **TRỤ CỘT — Bảo mật & quyền riêng tư** ✓ | `security.py`: `policy_check()` (allowlist gồm cả tool MCP, chống spoofing) gọi **trước** mọi tool ở bước ACT; `log_tool_call()` + `mask_pii()` che email/SĐT trước khi in/log. Secrets đọc từ `.env` qua dotenv; `.gitignore` bỏ `.env`, `data/`. |
+| **1. Agent system** (Perceive → Plan → Act → Observe) | `agent.py` → `ConciergeAgent.run_turn()`: comments clearly mark the 4 steps; `main.py` reads input (Perceive). |
+| **2. Agent Skills** ✓ (SKILL.md standard) | `agent.py` → `discover_skills()` (metadata always available) + `select_skill()` (loads based on `description`, progressive disclosure) + `load_skill()` (loads the body on match); skills live in `skills/adding-tasks/SKILL.md`, `skills/planning-day/SKILL.md`. |
+| **3. Tool use / Function calling** | `tools.py`: 5 real functions (`add_task`, `list_tasks`, `complete_task`, `delete_task`, `plan_day`) + `build_tool_declarations()` that declares them to Gemini. |
+| **4. MCP** ✓ (consume an existing server) | `agent.py` → `start_mcp()` opens a stdio session to **mcp-server-time** and merges `get_current_time`/`convert_time` into the tools for Gemini; `_call_mcp_tool()` invokes them via MCP. No server is built. |
+| **PILLAR — Security & privacy** ✓ | `security.py`: `policy_check()` (allowlist including the MCP tools, anti-spoofing) runs **before** every tool in the ACT step; `log_tool_call()` + `mask_pii()` mask email/phone before printing/logging. Secrets are read from `.env` via dotenv; `.gitignore` excludes `.env` and `data/`. |
 
-## Cấu trúc thư mục
+## Directory structure
 
 ```
 concierge/
-  main.py            # vòng lặp chat async; mở/đóng phiên MCP
+  main.py            # async chat loop; opens/closes the MCP session
   agent.py           # Gemini + function calling + skills (SKILL.md) + MCP client
-  tools.py           # các tool việc thao tác data/tasks.json
-  security.py        # trụ cột bảo mật (policy_check, mask_pii, log_tool_call)
+  tools.py           # task tools operating on data/tasks.json
+  security.py        # security pillar (policy_check, mask_pii, log_tool_call)
   skills/
     adding-tasks/
-      SKILL.md       # frontmatter name+description + hướng dẫn thêm việc
+      SKILL.md       # frontmatter name+description + instructions for adding tasks
     planning-day/
-      SKILL.md       # frontmatter name+description + hướng dẫn lập kế hoạch
+      SKILL.md       # frontmatter name+description + instructions for planning the day
   data/
-    tasks.json       # storage cục bộ (tự tạo nếu chưa có)
-  .env               # GEMINI_API_KEY=...  (KHÔNG commit)
+    tasks.json       # local storage (auto-created if missing)
+  .env               # GEMINI_API_KEY=...  (do NOT commit)
   .env.example
   .gitignore
   requirements.txt
@@ -84,7 +90,7 @@ concierge/
 ```
 
 ## requirements.txt
-- `google-genai` (gọi model `gemini-2.5-flash`, fallback `gemini-2.5-flash-lite`)
-- `python-dotenv` (đọc API key từ `.env`)
-- `mcp` (MCP client SDK — kết nối server qua stdio)
-- `mcp-server-time` (server thời gian chính thức, tiêu thụ qua `python -m mcp_server_time`)
+- `google-genai` (calls model `gemini-2.5-flash`, fallback `gemini-2.5-flash-lite`)
+- `python-dotenv` (reads the API key from `.env`)
+- `mcp` (MCP client SDK — connects to servers over stdio)
+- `mcp-server-time` (the official time server, consumed via `python -m mcp_server_time`)

@@ -7,12 +7,20 @@ description: Hướng dẫn lập kế hoạch và sắp xếp thứ tự công 
 
 Khi người dùng muốn lập kế hoạch / sắp xếp công việc trong ngày:
 
-1. Gọi tool `plan_day()` để lấy danh sách việc CHƯA hoàn thành cùng ngày hôm nay.
-2. Dựa trên kết quả, đề xuất một THỨ TỰ làm việc hợp lý trong ngày:
-   - Ưu tiên việc có hạn (`due`) gần nhất hoặc đã tới hạn.
+1. **BẮT BUỘC ĐẦU TIÊN — lấy ngày hiện tại thật:** luôn gọi tool `get_current_time`
+   với `timezone = "Asia/Ho_Chi_Minh"` TRƯỚC KHI đánh giá bất kỳ deadline nào, để biết
+   chính xác hôm nay là ngày mấy. TUYỆT ĐỐI KHÔNG được suy đoán, giả định hay bịa ngày
+   hôm nay; mọi kết luận về "tới hạn / còn mấy ngày / đã trễ" phải dựa trên ngày thật này.
+2. Gọi tool `plan_day()` để lấy danh sách việc CHƯA hoàn thành.
+3. So sánh trường `due` của từng việc với NGÀY HÔM NAY (lấy ở bước 1) để xác định
+   việc nào đã trễ, việc nào tới hạn hôm nay, việc nào còn hạn — và còn bao nhiêu ngày.
+   Không hiển thị/khẳng định một ngày hạn nào mà bạn chưa đối chiếu với ngày thật ở bước 1.
+4. Dựa trên kết quả, đề xuất một THỨ TỰ làm việc hợp lý trong ngày:
+   - Ưu tiên việc đã trễ hoặc có hạn (`due`) gần nhất so với hôm nay.
    - Việc quan trọng / mất nhiều thời gian nên làm sớm khi còn tỉnh táo.
    - Gom các việc nhỏ/nhanh lại với nhau.
-3. Trình bày kế hoạch dạng danh sách đánh số, mỗi dòng kèm lý do ngắn gọn.
-4. Nếu không có việc nào chưa làm, chúc mừng người dùng đã hoàn thành hết và gợi ý nghỉ ngơi.
+5. Trình bày kế hoạch dạng danh sách đánh số, mỗi dòng kèm lý do ngắn gọn
+   (nêu rõ còn mấy ngày tới hạn hoặc đã trễ mấy ngày, tính theo ngày thật).
+6. Nếu không có việc nào chưa làm, chúc mừng người dùng đã hoàn thành hết và gợi ý nghỉ ngơi.
 
 Giữ giọng văn ngắn gọn, thực tế, bằng tiếng Việt.

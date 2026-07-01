@@ -1,11 +1,11 @@
 """
-main.py — Vòng lặp chat trong terminal (Day 1 + MCP client Day 2)
+main.py — Terminal chat loop (Day 1 + MCP client Day 2)
 
-Đây là điểm khởi chạy: nạp API key từ .env (BẢO MẬT — không hardcode), khởi tạo
-agent, MỞ phiên MCP tới mcp-server-time rồi chạy vòng lặp chat. Vì MCP client dùng
-asyncio nên toàn bộ vòng chat chạy trong asyncio.run(main_async()). Mỗi lượt người
-dùng nhập sẽ được agent xử lý qua vòng lặp Perceive -> Plan -> Act -> Observe.
-'thoát'/'exit'/Ctrl+C -> đóng phiên MCP sạch, không treo.
+This is the entry point: it loads the API key from .env (SECURITY — no hardcoding),
+initializes the agent, OPENS an MCP session to mcp-server-time, then runs the chat loop.
+Because the MCP client uses asyncio, the whole chat loop runs inside asyncio.run(main_async()).
+Each user input is handled by the agent through the Perceive -> Plan -> Act -> Observe loop.
+'thoát'/'exit'/Ctrl+C -> close the MCP session cleanly, no hang.
 """
 
 import asyncio
@@ -19,14 +19,14 @@ from security import mask_pii
 
 
 async def main_async() -> None:
-    # Đảm bảo in/đọc tiếng Việt được trên terminal Windows (tránh lỗi codepage cp1252).
+    # Ensure Vietnamese can be printed/read on a Windows terminal (avoid cp1252 codepage errors).
     for stream in (sys.stdout, sys.stdin, sys.stderr):
         try:
             stream.reconfigure(encoding="utf-8")
         except (AttributeError, ValueError):
             pass
 
-    # BẢO MẬT — Secrets: chỉ đọc API key từ .env qua python-dotenv, KHÔNG hardcode.
+    # SECURITY — Secrets: read the API key only from .env via python-dotenv, never hardcode.
     load_dotenv()
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key or api_key.strip() in ("", "your_key_here"):
@@ -40,7 +40,7 @@ async def main_async() -> None:
         print(f"[Lỗi] Không khởi tạo được agent: {e}")
         sys.exit(1)
 
-    # KHÁI NIỆM 4 — MCP client: mở phiên tới mcp-server-time, giữ mở suốt phiên chat.
+    # CONCEPT 4 — MCP client: open a session to mcp-server-time, keep it open for the whole chat.
     await agent.start_mcp()
 
     print("=" * 60)
@@ -51,7 +51,7 @@ async def main_async() -> None:
     try:
         while True:
             try:
-                # PERCEIVE: nhận câu người dùng (chạy input() trong thread để không chặn event loop).
+                # PERCEIVE: read the user's input (run input() in a thread so it doesn't block the event loop).
                 user_input = (await asyncio.to_thread(input, "\nBạn> ")).strip()
             except (EOFError, KeyboardInterrupt):
                 print("\nTạm biệt!")
@@ -63,16 +63,16 @@ async def main_async() -> None:
                 print("Tạm biệt!")
                 break
 
-            # Giao cho agent xử lý cả lượt (Plan -> Act -> Observe nằm trong run_turn).
+            # Hand the whole turn to the agent (Plan -> Act -> Observe live inside run_turn).
             try:
                 reply = await agent.run_turn(user_input)
             except Exception as e:
-                # BẢO MẬT — che PII cả trong thông báo lỗi phòng khi chứa dữ liệu người dùng.
+                # SECURITY — mask PII even in the error message in case it contains user data.
                 reply = mask_pii(f"[Lỗi khi gọi Gemini] {e}")
 
             print(f"\nConcierge> {reply}")
     finally:
-        # Đóng phiên MCP sạch dù thoát bình thường hay do lỗi/Ctrl+C.
+        # Close the MCP session cleanly whether we exit normally or via error/Ctrl+C.
         await agent.close()
 
 
