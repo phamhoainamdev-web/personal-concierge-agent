@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.venv/Scripts/python.exe -m pip list)",
+      "Bash(PYTHONUTF8=1 .venv/Scripts/python.exe *)",
+      "Bash(python -c ' *)",
+      "Bash(PYTHONIOENCODING=utf-8 python -c ' *)",
+      "Bash(./.venv/Scripts/python.exe -c ' *)",
+      "Bash(PYTHONIOENCODING=utf-8 ./.venv/Scripts/python.exe -c ' *)",
+      "Bash(PYTHONIOENCODING=utf-8 ./.venv/Scripts/python.exe -m py_compile main.py agent.py tools.py security.py)",
+      "Bash(grep -rn \"_detect_skill\\\\|add_task\\\\.md\\\\|plan_day\\\\.md\\\\|SPEC_MCP\" *.py README.md)",
+      "Bash(./.venv/Scripts/python.exe -m py_compile agent.py)"
+    ]
+  }
+}

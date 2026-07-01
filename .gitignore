@@ -1,0 +1,6 @@
+# BẢO MẬT — tuyệt đối không commit secrets và dữ liệu cá nhân
+.env
+.venv/
+data/
+__pycache__/
+*.pyc
