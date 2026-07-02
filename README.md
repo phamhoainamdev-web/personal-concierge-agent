@@ -65,7 +65,7 @@ In the chat loop, type `thoát` or `exit` to quit.
 | **2. Agent Skills** ✓ (SKILL.md standard) | `agent.py` → `discover_skills()` (metadata always available) + `select_skill()` (loads based on `description`, progressive disclosure) + `load_skill()` (loads the body on match); skills live in `skills/adding-tasks/SKILL.md`, `skills/planning-day/SKILL.md`. |
 | **3. Tool use / Function calling** | `tools.py`: 5 real functions (`add_task`, `list_tasks`, `complete_task`, `delete_task`, `plan_day`) + `build_tool_declarations()` that declares them to Gemini. |
 | **4. MCP** ✓ (consume an existing server) | `agent.py` → `start_mcp()` opens a stdio session to **mcp-server-time** and merges `get_current_time`/`convert_time` into the tools for Gemini; `_call_mcp_tool()` invokes them via MCP. No server is built. |
-| **PILLAR — Security & privacy** ✓ | `security.py`: `policy_check()` (allowlist including the MCP tools, anti-spoofing) runs **before** every tool in the ACT step; `log_tool_call()` + `mask_pii()` mask email/phone before printing/logging. Secrets are read from `.env` via dotenv; `.gitignore` excludes `.env` and `data/`. |
+| **PILLAR — Security & privacy** ✓ | `security.py`: `policy_check()` (allowlist including the MCP tools, anti-spoofing) runs **before** every tool in the ACT step; `log_tool_call()` + `mask_pii()` mask email/phone before printing/logging. Secrets are read from `.env` via dotenv; `.gitignore` excludes `.env` and `data/`. Static analysis: `semgrep scan --config auto` (v1.168.0, 290 rules) — **0 findings**. |
 
 ## Directory structure
 
@@ -78,12 +78,15 @@ concierge/
   skills/
     adding-tasks/
       SKILL.md       # frontmatter name+description + instructions for adding tasks
+      evals.md       # eval cases: when this skill must / must not be loaded
     planning-day/
       SKILL.md       # frontmatter name+description + instructions for planning the day
+      evals.md       # eval cases: when this skill must / must not be loaded
   data/
     tasks.json       # local storage (auto-created if missing)
+  AGENTS.md          # project rules for coding agents (stack, hard rules, workflow)
   .env               # GEMINI_API_KEY=...  (do NOT commit)
-  .env.example
+  .env.example       # template for .env (safe to commit — contains no real key)
   .gitignore
   requirements.txt
   README.md

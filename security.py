@@ -83,7 +83,9 @@ def _mask_email(match: re.Match) -> str:
 def _mask_phone(match: re.Match) -> str:
     """Keep the first 2 + last 2 digits, mask the middle: '0901234589' -> '09******89'."""
     digits = re.sub(r"\D", "", match.group(1))
-    if len(digits) < 6:
+    # Require >= 9 digits: VN phones have 10 (or +84 + 9), while dates like
+    # '2026-07-02' only have 8 — so real dates never get masked as phones.
+    if len(digits) < 9:
         return match.group(1)
     return digits[:2] + "*" * (len(digits) - 4) + digits[-2:]
 
