@@ -1,6 +1,6 @@
 ---
 name: adding-tasks
-description: Hướng dẫn thêm một hoặc nhiều việc cần làm vào danh sách qua tool add_task. Dùng khi người dùng muốn thêm việc, tạo việc, nhắc tôi, ghi chú một đầu việc mới (có thể kèm hạn chót). KHÔNG dùng khi người dùng chỉ muốn xem danh sách, hoàn thành/xóa việc, hoặc lập kế hoạch sắp xếp cả ngày.
+description: Hướng dẫn thêm một hoặc nhiều việc cần làm mới qua tool add_task. Dùng khi người dùng muốn thêm việc, tạo việc, nhắc tôi, ghi chú một đầu việc mới (có thể kèm hạn chót). KHÔNG dùng khi người dùng chỉ muốn xem danh sách, hoàn thành/xóa việc, hoặc lập kế hoạch sắp xếp cả ngày.
 ---
 
 # Skill: Thêm việc (adding-tasks)

@@ -192,12 +192,19 @@ def select_skill(user_input: str, catalog: dict[str, dict]) -> str | None:
     skill matches, returns None — replacing the previous hard-coded intent mapping.
     """
     text = user_input.lower()
+    keywords_by_skill = {
+        name: {w for w in re.findall(r"\w+", _trigger_text(info["description"]), re.UNICODE)
+               if len(w) >= 4}
+        for name, info in catalog.items()
+    }
+    # Words present in EVERY skill's trigger text (e.g. 'việc', 'dùng', 'người') carry no
+    # signal — without this, "xem việc của tôi" matched adding-tasks on 'việc' alone
+    # instead of returning None.
+    common = set.intersection(*keywords_by_skill.values()) if len(keywords_by_skill) > 1 else set()
     best_name: str | None = None
     best_score = 0
-    for name, info in catalog.items():
-        keywords = {w for w in re.findall(r"\w+", _trigger_text(info["description"]), re.UNICODE)
-                    if len(w) >= 4}
-        score = sum(1 for w in keywords if w in text)
+    for name, keywords in keywords_by_skill.items():
+        score = sum(1 for w in keywords - common if w in text)
         if score > best_score:
             best_name, best_score = name, score
     return best_name
@@ -327,10 +334,24 @@ class ConciergeAgent:
         response = self._generate(contents, config)
 
         # Tool loop: the model may request tool calls several times in a row.
-        for _ in range(5):  # limit to avoid an infinite loop
+        retried_empty = False
+        for _ in range(6):  # limit to avoid an infinite loop
             calls = getattr(response, "function_calls", None)
             if not calls:
-                break  # The model has its final answer, no more tool calls needed.
+                if response.text or retried_empty:
+                    break  # The model has its final answer, no more tool calls needed.
+                # EMPTY response (no text, no tool call — happens when Gemini is overloaded):
+                # dump the raw candidate instead of swallowing it, then retry ONCE.
+                cand = response.candidates[0] if response.candidates else None
+                print(
+                    "[DEBUG] Gemini trả về rỗng (không text, không tool call). "
+                    f"finish_reason={getattr(cand, 'finish_reason', None)}, "
+                    f"content={getattr(cand, 'content', None)}, "
+                    f"prompt_feedback={response.prompt_feedback}"
+                )
+                retried_empty = True
+                response = self._generate(contents, config)
+                continue
 
             # Record the model's turn (containing the tool-call request) into the conversation history.
             contents.append(response.candidates[0].content)
